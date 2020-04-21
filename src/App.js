@@ -5,6 +5,11 @@ import { makeStyles } from '@material-ui/core/styles';
 import Paper from '@material-ui/core/Paper';
 import Grid from '@material-ui/core/Grid';
 import unescape from 'lodash/unescape';
+import TextField from '@material-ui/core/TextField';
+import Button from '@material-ui/core/Button';
+import Checkbox from '@material-ui/core/Checkbox';
+//import CheckBoxOutlineBlankIcon from '@material-ui/icons/CheckBoxOutlineBlank';
+//import CheckBoxIcon from '@material-ui/icons/CheckBox';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -41,13 +46,53 @@ function App(props) {
       })
   }
 
-  const fetchSubredditPost = (subreddit)=>{
-    fetch (`https://www.reddit.com/r/${subreddit}/hot.json`)
+  const fetchSubredditPost = (subreddit, hotOrNew)=>{
+    //https://www.reddit.com/r/politics/new.json
+    console.log("fetchSubredditPost: " + hotOrNew);
+    fetch (`https://www.reddit.com/r/${subreddit}/`
+    +(typeof hotOrNew !== 'undefined' && hotOrNew?
+      hotOrNew
+      :hotOrNewState.value?'hot':'new')+`.json`)
       .then(response => response.json())
       .then(json => {
         var children = json.data.children
         setSubredditPostState(children)
       })
+  }
+
+  const fetchPopularSubredditsSearch = ()=>{
+    fetch (`https://www.reddit.com/subreddits/search.json?q=` + searchState.value)
+      .then(response => response.json())
+      .then(json => {
+        var children = json.data.children
+        setSubredditState(children)
+      })
+  }
+
+  const subRedditChangeValue = (event)=>{
+    setSearchState({value: event.currentTarget.value})
+    console.log("subRedditChangeValue: " + event.currentTarget.value);
+    if (typeof searchState.value === 'undefined' || searchState.value.length === 0)
+      fetchPopularSubreddits()
+  }
+
+  const subRedditChangeSubmit = (event)=>{
+    console.log("subRedditChangeSubmit: " + searchState.value);
+    if (typeof searchState.value === 'undefined' || searchState.value.length === 0)
+      fetchPopularSubreddits()
+    else
+      fetchPopularSubredditsSearch()
+  }
+
+  const handleHotOrNewChange = (event)=>{
+    console.log("handleHotOrNewChange: " + event.target.checked);
+    let hotOrNewHelper = !hotOrNewState.value
+    console.log("before: " + hotOrNewHelper)
+    
+    setHotOrNewState({value: hotOrNewHelper})
+    console.log("after: " + hotOrNewHelper)
+    if (typeof miscState.value !== 'undefined' && miscState.value.length > 0)
+      fetchSubredditPost(miscState.value, hotOrNewHelper?'hot':'new')
   }
 
   const clickSubredditHandler = (event, value, index)=>{
@@ -79,6 +124,14 @@ function App(props) {
     selectedSubredditPostIndex: -1}
   );
 
+  const [searchState, setSearchState] = useState(
+    {value: ''}
+  );
+
+  const [hotOrNewState, setHotOrNewState] = useState(
+    {value: true}
+  );
+
   useEffect(() => {
     //var tempMiscState = miscState
     //tempMiscState.count++
@@ -91,11 +144,18 @@ function App(props) {
   return (
     <div className={classes.root}>
       <header>
-        <h3>Subreddit POC</h3>  
+        <h3>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Subreddit POC</h3>  
       </header>
     <Paper>
     <Grid container spacing={3}>
       <Grid item xs={4}>
+        <Paper>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<TextField id="standard-search" label="Search field" 
+          onChange={subRedditChangeValue} value={searchState.value} type="search" />
+          <Button variant="contained" color="primary" onClick={subRedditChangeSubmit}>
+            Search
+          </Button>
+        </Paper>
       <Paper className={classes.paper}>
         <h5>Subreddits</h5>
       <table style={{borderCollapse: 'collapse'}}>
@@ -119,6 +179,14 @@ function App(props) {
       <Grid item xs={7}>
         <Grid container spacing={1}>
         <Grid item xs={12}>
+          <Paper>
+          <Checkbox
+            checked={hotOrNewState.value}
+            onChange={handleHotOrNewChange}
+            name='Hot\New'
+            indeterminate
+          />{hotOrNewState.value?"Hot":"New"}
+          </Paper>
         <Paper className={classes.paper}>
           <h5>Subreddit posts for {miscState.value}</h5>
           <table style={{borderCollapse: 'collapse'}}>
